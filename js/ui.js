@@ -32,13 +32,14 @@
   // ---------- 骨牌外觀 ----------
   // 半邊 3×3 格位置（1 左上 … 9 右下），跟骰子排法一樣
   const PIPS = { 1: [5], 2: [3, 7], 3: [3, 5, 7], 4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9] };
-  // 傳統配色：1 點、4 點為紅；天牌兩個 6 各有一半（左排）是紅點
+  // 傳統配色：1 點、4 點為紅；天牌上下兩個 6 紅白相間、左右相反：上半左排紅右排白，下半左排白右排紅
+  // heaven：0 = 一般，1 = 天牌上半，2 = 天牌下半
   function half(n, heaven) {
-    const red = c => n === 1 || n === 4 || (heaven && c % 3 === 1);
+    const red = c => n === 1 || n === 4 || (heaven === 1 && c % 3 === 1) || (heaven === 2 && c % 3 === 0);
     return `<span class="half${n === 1 ? ' one' : ''}">` +
       PIPS[n].map(c => `<i class="${red(c) ? 'r' : ''}" style="grid-area:${Math.ceil(c / 3)}/${(c - 1) % 3 + 1}"></i>`).join('') + '</span>';
   }
-  const faceHTML = id => { const t = P.TILES[id]; const h = t.group === '天'; return half(t.pips[0], h) + half(t.pips[1], h); };
+  const faceHTML = id => { const t = P.TILES[id]; const h = t.group === '天'; return half(t.pips[0], h ? 1 : 0) + half(t.pips[1], h ? 2 : 0); };
   const mini = id => `<span class="mt" title="${P.TILES[id].name} ${P.TILES[id].pips.join('-')}">${faceHTML(id)}</span>`;
   const minis = (ids, gapAfter) => `<span class="mts">${ids.map((t, i) => mini(t) + (i === gapAfter ? '<span class="gap"></span>' : '')).join('')}</span>`;
 

@@ -191,7 +191,7 @@
 .rk b { color: var(--strong); }
 .rk small { color: var(--muted); }
 .singles { display: flex; flex-wrap: wrap; gap: 8px 12px; font-size: 12px; }
-.singles span { display: inline-flex; align-items: center; gap: 4px; }
+.singles > span { display: inline-flex; align-items: center; gap: 4px; }
 .verify-out .vs { display: grid; grid-template-columns: 44px 1fr; gap: 6px 8px; align-items: center; margin-top: 8px; }
 .verify-out .vs b { color: var(--strong); }
 
