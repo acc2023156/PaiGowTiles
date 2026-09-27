@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f212e">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<meta name="description" content="黑粒仔（台灣推牌九）：一莊三門，每家 4 張骨牌分前後兩對公比，兩對全贏才算贏（模擬遊戲幣，非真錢）">
+<title>黑粒仔</title>
+<link rel="stylesheet" href="css/style.css?v=1">
+<link rel="stylesheet" href="css/game.css?v=1">
+</head>
+<body>
+<header class="topbar">
+  <a class="back-btn" id="backBtn" hidden>‹ 大廳</a>
+  <div class="brand">黑粒仔</div>
+  <div class="demo-tag" id="demoTag">模擬遊戲幣 · 非真錢</div>
+  <button class="sound-btn" id="soundBtn" type="button" title="音效開關" aria-label="音效開關">🔊</button>
+  <div class="wallet" title="你的遊戲幣餘額"><i class="coin"></i><b id="balance">0.00</b></div>
+</header>
+
+<main class="layout">
+  <aside class="panel">
+    <div class="seg" id="modeSeg">
+      <button type="button" class="on" data-mode="manual">手動</button>
+      <button type="button" data-mode="auto">自動</button>
+    </div>
+
+    <div class="field">
+      <label for="betAmount">每門下注</label>
+      <div class="input-row">
+        <input id="betAmount" type="number" inputmode="decimal" min="0.1" step="0.1" value="10">
+        <button type="button" data-amt="half">½</button>
+        <button type="button" data-amt="double">2×</button>
+        <button type="button" data-amt="max">Max</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>押哪一門 <small>（可複選，也可以直接點桌上的門）</small></label>
+      <div class="doors-pick" id="doorPick"></div>
+    </div>
+
+    <div id="autoFields" class="auto-fields" hidden>
+      <div class="field">
+        <label for="autoCount">局數 <small>（0 = 無限）</small></label>
+        <div class="input-row"><input id="autoCount" type="number" inputmode="numeric" min="0" step="1" value="10"></div>
+      </div>
+      <div class="two">
+        <div class="field">
+          <label for="onWin">贏後加碼 %</label>
+          <div class="input-row"><input id="onWin" type="number" inputmode="decimal" min="0" step="1" value="0"><span class="suffix">%</span></div>
+        </div>
+        <div class="field">
+          <label for="onLoss">輸後加碼 %</label>
+          <div class="input-row"><input id="onLoss" type="number" inputmode="decimal" min="0" step="1" value="0"><span class="suffix">%</span></div>
+        </div>
+      </div>
+      <div class="two">
+        <div class="field">
+          <label for="stopProfit">獲利停止</label>
+          <div class="input-row"><input id="stopProfit" type="number" inputmode="decimal" min="0" step="1" value="0"></div>
+        </div>
+        <div class="field">
+          <label for="stopLoss">虧損停止</label>
+          <div class="input-row"><input id="stopLoss" type="number" inputmode="decimal" min="0" step="1" value="0"></div>
+        </div>
+      </div>
+      <p class="hint">0 = 不限；加碼 0% = 回到原始金額。「贏／輸」以整局淨損益判斷，走局不加碼。</p>
+    </div>
+
+    <div class="stats">
+      <div><span>總下注</span><b id="totalOut">-</b></div>
+      <div><span>每門贏</span><b id="multOut">-</b></div>
+      <div><span>全贏派彩</span><b id="payOut">-</b></div>
+      <div><span>單門 贏／走／輸</span><b id="probOut">-</b></div>
+    </div>
+
+    <button class="main-btn" id="mainBtn" type="button">開牌</button>
+    <label class="toggle"><input type="checkbox" id="fastChk"> 快速開牌</label>
+    <p class="hint center">快捷鍵：空白鍵 開牌，1 2 3 切換押門</p>
+  </aside>
+
+  <section class="stage">
+    <div class="recent" id="recent"></div>
+    <div class="table" id="table">
+      <div class="seat dealer" id="seat0">
+        <div class="seat-head"><b>莊家</b><span class="seat-tag" id="dealerTag"></span></div>
+        <div class="hand">
+          <div class="pair" data-pair="front"><div class="slots"></div><em class="hname"></em></div>
+          <div class="pair" data-pair="back"><div class="slots"></div><em class="hname"></em></div>
+        </div>
+      </div>
+
+      <div class="mid">
+        <div class="wall" id="wall" aria-hidden="true"></div>
+        <div class="result" id="result" hidden><b id="resultVal"></b><span id="resultSub"></span></div>
+      </div>
+
+      <div class="doors">
+        <div class="seat door" id="seat1" data-door="初" role="button" tabindex="0"></div>
+        <div class="seat door" id="seat2" data-door="川" role="button" tabindex="0"></div>
+        <div class="seat door" id="seat3" data-door="尾" role="button" tabindex="0"></div>
+      </div>
+    </div>
+    <div class="bet-line" id="betLine"></div>
+    <div class="stage-foot">
+      <span>局號 <b id="nonceOut">-</b></span>
+      <span class="rtp" id="rtpOut"></span>
+      <button class="link" id="fairBtn" type="button">公平性</button>
+    </div>
+  </section>
+
+  <section class="tables">
+    <div class="tabs">
+      <button type="button" class="on" data-tab="mine">我的紀錄</button>
+      <button type="button" data-tab="ranks">牌型大小</button>
+      <button type="button" data-tab="rules">規則</button>
+    </div>
+    <div class="tab-body" id="tab-mine">
+      <div class="summary" id="summary"></div>
+      <div class="list-head"><span>局號</span><span>押門</span><span>結果</span><span>下注</span><span>派彩</span></div>
+      <div class="list" id="myList"></div>
+    </div>
+    <div class="tab-body ranks" id="tab-ranks" hidden></div>
+    <div class="tab-body rules" id="tab-rules" hidden>
+      <ol>
+        <li>一莊三門：<b>莊家</b>對<b>初門、川門、尾門</b>。選好每門下注金額，押一門或多門，按「開牌」。</li>
+        <li>32 張骨牌洗好後，每家各拿 4 張，自動配成兩對：<b>前（小對）</b>與<b>後（大對）</b>，後對一定 ≥ 前對。</li>
+        <li><b>公比</b>：每門的前對比莊家前對、後對比莊家後對。
+          <br>兩對都贏 → <b class="g">贏</b>　兩對都輸 → <b class="r">輸</b>　一勝一負 → <b>走</b>（退回本金）</li>
+        <li>兩對一樣大算<b>莊家贏</b>（同點莊吃）；鱉十（0 點）遇鱉十也是莊家贏。</li>
+        <li>贏了派彩 = 下注 × <b id="ruleMult">1.96</b>（含本金，莊家抽水 <span id="ruleComm">4%</span>）。</li>
+      </ol>
+      <h4>兩張牌的大小</h4>
+      <p><b>至尊寶</b> ＞ <b>對子</b>（雙天、雙地…雜五對，見「牌型大小」）＞ <b>天王／地王</b>（天、地配 9 點）＞ <b>天槓／地槓</b>（配 8 點）＞ <b>天高九／地高九</b>（配 7 點）＞ <b>點數</b>。</p>
+      <p>點數 = 兩張點數相加取個位數，9 點最大、0 點（鱉十）最小。同點數時比兩張中較大的那張（單張順序：天 地 人 鵝 梅 長三 板凳 斧頭 紅頭十 高腳七 銅錘六 雜九 雜八 雜七 雜五 至尊）。<br>
+      至尊的兩張牌（丁三、二四）不成對時，可當 3 點或 6 點，自動取較大的結果。</p>
+      <h4>配牌法</h4>
+      <p>莊家和三門都用同一套配牌：在三種分法中選<b>前對最大</b>的；前對一樣大時選後對較大的。</p>
+      <h4>數學（RTP <span id="ruleRtp">97.85%</span>）</h4>
+      <p>窮舉全部 35,960 × 20,475 = 736,281,000 種「莊家 4 張 × 一門 4 張」：單門
+      贏 <b id="rulePw"></b>、走 <b id="rulePp"></b>、輸 <b id="rulePl"></b>。<br>
+      期望回報 = 走 + 1.96 × 贏 ≈ <b id="ruleRtp2"></b>。押越多門不會改變每門的期望值。</p>
+      <h4>公平性</h4>
+      <p>每局開始前公開 <code>SHA256(伺服器種子)</code>，結束後公開種子。亂數由 <code>SHA256(伺服器種子:客戶種子:局號:游標)</code> 每 8 個 hex 轉成 0~1，用 Fisher–Yates 洗 32 張牌：莊家拿第 1–4 張、初門 5–8、川門 9–12、尾門 13–16。可在「公平性」視窗自行驗證。</p>
+    </div>
+  </section>
+</main>
+
+<dialog class="modal" id="fairDialog">
+  <form method="dialog" class="modal-card">
+    <h3>公平性驗證</h3>
+    <div class="field">
+      <label for="clientSeed">客戶種子 <small>（下一局起生效）</small></label>
+      <div class="input-row"><input id="clientSeed" type="text" maxlength="64" autocomplete="off"><button type="button" id="seedRandom">換</button></div>
+    </div>
+    <div class="field">
+      <label>下一局伺服器種子雜湊</label>
+      <code class="hash" id="nextHash"></code>
+    </div>
+    <hr>
+    <h4>驗證任一局</h4>
+    <div class="field"><label for="vServer">伺服器種子</label><div class="input-row"><input id="vServer" type="text" autocomplete="off"></div></div>
+    <div class="field"><label for="vClient">客戶種子</label><div class="input-row"><input id="vClient" type="text" autocomplete="off"></div></div>
+    <div class="field"><label for="vNonce">局號</label><div class="input-row"><input id="vNonce" type="number" min="1" step="1"></div></div>
+    <div class="verify-out" id="verifyOut"></div>
+    <div class="modal-actions"><button class="main-btn" value="close">關閉</button></div>
+  </form>
+</dialog>
+
+<script src="js/sha256.js"></script>
+<script src="js/engine.js?v=1"></script>
+<script src="js/sound.js?v=1"></script>
+<script src="js/ui.js?v=1"></script>
+</body>
+</html>
