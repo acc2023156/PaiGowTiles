@@ -20,7 +20,7 @@
     modeSeg: $('#modeSeg'), autoFields: $('#autoFields'),
     autoCount: $('#autoCount'), onWin: $('#onWin'), onLoss: $('#onLoss'), stopProfit: $('#stopProfit'), stopLoss: $('#stopLoss'),
     myList: $('#myList'), summary: $('#summary'), ranks: $('#tab-ranks'),
-    sound: $('#soundBtn'), back: $('#backBtn'), demoTag: $('#demoTag'),
+    tapHint: $('#tapHint'), sound: $('#soundBtn'), back: $('#backBtn'), demoTag: $('#demoTag'),
     fair: $('#fairDialog'), clientSeed: $('#clientSeed'), nextHash: $('#nextHash'),
     vServer: $('#vServer'), vClient: $('#vClient'), vNonce: $('#vNonce'), verifyOut: $('#verifyOut')
   };
@@ -53,12 +53,14 @@
   let autoRunning = false;
   let autoStopReq = false;
   let shownBalance = null; // 動畫進行中顯示「已扣注、未派彩」的餘額
+  let shownBets = null;    // 桌上這一局各門的押注（桌上沒牌時為 null）
+  let tableTaps = +saved.tableTaps || 0; // 直接點桌面開牌的次數，滿 3 次就不再顯示點擊提示
 
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify({
         balance: game.balance, clientSeed: game.clientSeed, nonce: game.nonce, nextServerSeed: game.nextServerSeed,
-        history: history.slice(0, 100), bet: el.bet.value, doors: [...picked], fast: el.fast.checked
+        history: history.slice(0, 100), bet: el.bet.value, doors: [...picked], fast: el.fast.checked, tableTaps
       }));
     } catch (e) { /* storage unavailable */ }
   }
@@ -228,12 +230,14 @@
     });
     doorSeats.forEach((s, i) => {
       const on = picked.has(P.DOORS[i]);
-      s.el.classList.toggle('bet', on);
+      // 桌上還留著上一局的牌時，門框維持那一局的押注與勝負，只改下注籌碼的數字
+      s.el.classList.toggle('bet', shownBets ? shownBets[i] > 0 : on);
       s.el.classList.toggle('locked', lock);
       s.el.setAttribute('aria-pressed', on);
       s.el.setAttribute('aria-label', `${P.DOORS[i]}門${on ? '（已押）' : ''}`);
-      s.chip.hidden = !on || !(amount > 0);
-      s.chip.textContent = fmt(amount);
+      s.chip.hidden = !(amount > 0) || (!on && !shownBets);
+      s.chip.classList.toggle('zero', !on);
+      s.chip.textContent = fmt(on ? amount : 0);
     });
     el.total.textContent = fmt(total);
     el.mult.textContent = P.WIN_MULT.toFixed(2) + '×';
@@ -261,6 +265,7 @@
     el.modeSeg.querySelectorAll('button').forEach(x => { x.disabled = lock; });
     [el.autoCount, el.onWin, el.onLoss, el.stopProfit, el.stopLoss].forEach(i => { i.disabled = autoRunning; });
     el.nonce.textContent = game.nonce + (dealing ? 0 : 1);
+    el.tapHint.classList.toggle('show', mode === 'manual' && !lock && !el.main.disabled && tableTaps < 3);
     renderBalance();
   }
 
@@ -391,6 +396,7 @@
     record(r);
     save();
     dealing = true;
+    shownBets = r.bets;
     shownBalance = P.cents(game.balance - r.payout);
     clearTable();
     renderControls();
@@ -486,6 +492,12 @@
   el.doorPick.addEventListener('click', e => {
     const b = e.target.closest('button');
     if (b && !b.disabled) toggleDoor(b.dataset.door);
+  });
+  // 手動模式點桌面上半部（莊家、牌墩）也能開牌；下方三門是押門用
+  el.table.addEventListener('click', e => {
+    if (e.target.closest('.doors') || mode !== 'manual' || autoRunning || el.main.disabled) return;
+    tableTaps += 1;
+    el.main.click();
   });
   doorSeats.forEach(s => {
     s.el.addEventListener('click', () => toggleDoor(s.el.dataset.door));
@@ -593,6 +605,7 @@
   if (last && last.arranged) {
     const doors = last.arranged.slice(1).map(a => P.compare(P.arrange(seatTiles(a)), P.arrange(seatTiles(last.arranged[0]))));
     placeRound(last.arranged, doors);
+    shownBets = last.bets;
   }
   renderHistory();
   renderControls();
