@@ -195,6 +195,64 @@
 .verify-out .vs { display: grid; grid-template-columns: 44px 1fr; gap: 6px 8px; align-items: center; margin-top: 8px; }
 .verify-out .vs b { color: var(--strong); }
 
+/* ---------- 上莊 ---------- */
+.seg button { padding: 8px 4px; }
+.rooms { display: grid; gap: 6px; }
+.rooms button {
+  display: grid; grid-template-columns: auto 1fr auto; gap: 2px 10px; align-items: baseline; text-align: left;
+  background: var(--input); border: 2px solid transparent; border-radius: 8px; padding: 8px 10px; color: var(--text);
+}
+.rooms button b { color: var(--strong); font-size: 14px; }
+.rooms button span { font-size: 12px; }
+.rooms button span:last-of-type { text-align: right; }
+.rooms button em { font-style: normal; color: var(--gold); font-weight: 800; font-variant-numeric: tabular-nums; }
+.rooms button small { grid-column: 1 / -1; font-size: 11px; color: var(--muted); }
+.rooms button.on { border-color: var(--green); background: #173a22; }
+.rooms button.no small { color: var(--red); }
+.rooms button:disabled { cursor: not-allowed; }
+.rooms button.no, .rooms button:disabled:not(.on) { opacity: .55; }
+.bank-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.bank-status div { background: var(--input); border-radius: 6px; padding: 6px 8px; display: flex; flex-direction: column; }
+.bank-status span { font-size: 11px; color: var(--muted); }
+.bank-status b { color: var(--strong); font-variant-numeric: tabular-nums; }
+.bank-status b.g { color: var(--green); }
+.bank-status b.r { color: var(--red); }
+.sub-btn {
+  width: 100%; margin-top: 8px; border: 2px solid var(--line); background: var(--panel-2); color: var(--strong);
+  border-radius: var(--radius); padding: 10px; font-weight: 800;
+}
+.sub-btn:hover { border-color: var(--red); color: #ff9aac; }
+.sub-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 上莊時鎖定的錢包：放在莊家左側 */
+.bank-box {
+  position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); z-index: 4;
+  display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 6px 8px; min-width: 82px;
+  background: rgba(15, 33, 46, .85); border: 1px solid var(--gold); border-radius: 10px; box-shadow: 0 0 14px rgba(255, 209, 102, .2);
+  white-space: nowrap; cursor: default;
+}
+.bank-box .lk { font-size: 10px; color: var(--gold); font-weight: 700; }
+.bank-box b { color: var(--strong); font-size: 14px; font-variant-numeric: tabular-nums; }
+.bank-box small { font-size: 9px; color: var(--muted); }
+.bank-box.bump b { animation: bump .5s; }
+#dealerName.me { color: var(--gold); }
+.wallet.locked { box-shadow: inset 0 0 0 1px var(--gold); }
+.wallet.locked::before { content: "🔒"; font-size: 12px; }
+
+/* 牌墩旁的「新牌／剩 1 局」 */
+.shoe-tag {
+  position: absolute; right: calc(100% + 8px); top: 50%; transform: translateY(-50%); white-space: nowrap;
+  font-size: 11px; font-weight: 800; color: #f3e6c4; background: rgba(0, 0, 0, .3); border-radius: 99px; padding: 2px 8px;
+}
+.shoe-tag.last { color: var(--gold); }
+.mid .wall { position: relative; }
+.mid { align-items: center; }
+
+/* 紀錄：上莊局 */
+.rd.bk b { font-size: 11px; color: #3a2400; background: var(--gold); border-radius: 5px; width: 20px; display: grid; place-items: center; }
+.bk-tag { color: #3a2400; background: var(--gold); border-radius: 4px; padding: 0 5px; font-weight: 800; font-size: 11px; }
+.row .sr { color: var(--muted); font-size: 10px; margin-left: 3px; }
+
 /* ---------- mobile ---------- */
 @media (max-width: 900px) {
   .demo-tag { display: none; }
@@ -212,6 +270,9 @@
   }
 }
 @media (max-width: 400px) {
+  .bank-box { right: calc(100% + 4px); min-width: 0; padding: 5px 6px; }
+  .bank-box b { font-size: 12px; }
+  .tap-hint { left: calc(100% + 4px); }
   .table { --tw: 27px; padding: 10px 6px 16px; }
   .doors { gap: 5px; }
   .seat { padding: 5px 4px 10px; }

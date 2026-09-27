@@ -7,8 +7,8 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <meta name="description" content="黑粒仔（台灣推牌九）：一莊三門，每家 4 張骨牌分前後兩對公比，兩對全贏才算贏（模擬遊戲幣，非真錢）">
 <title>黑粒仔</title>
-<link rel="stylesheet" href="css/style.css?v=2">
-<link rel="stylesheet" href="css/game.css?v=2">
+<link rel="stylesheet" href="css/style.css?v=3">
+<link rel="stylesheet" href="css/game.css?v=3">
 </head>
 <body>
 <header class="topbar">
@@ -24,8 +24,10 @@
     <div class="seg" id="modeSeg">
       <button type="button" class="on" data-mode="manual">手動</button>
       <button type="button" data-mode="auto">自動</button>
+      <button type="button" data-mode="bank">上莊</button>
     </div>
 
+    <div id="playerFields">
     <div class="field">
       <label for="betAmount">每門下注</label>
       <div class="input-row">
@@ -39,6 +41,20 @@
     <div class="field">
       <label>押哪一門 <small>（可複選，也可以直接點桌上的門）</small></label>
       <div class="doors-pick" id="doorPick"></div>
+    </div>
+    </div>
+
+    <div id="bankFields" class="bank-fields" hidden>
+      <div class="field">
+        <label for="vipSel">VIP 等級 <small>（示範用；大廳可帶 ?vip=）</small></label>
+        <select id="vipSel"></select>
+      </div>
+      <div class="field">
+        <label>上莊場次 <small>（錢包要夠付該場最大賠付）</small></label>
+        <div class="rooms" id="roomPick"></div>
+      </div>
+      <div class="bank-status" id="bankStatus" hidden></div>
+      <p class="hint">上莊時由其他玩家押三門，你當莊家：吃輸的門、賠贏的門（壓一賠一）。上莊期間錢包鎖定；錢包低於該場最大賠付會自動下莊。</p>
     </div>
 
     <div id="autoFields" class="auto-fields" hidden>
@@ -69,7 +85,7 @@
       <p class="hint">0 = 不限；加碼 0% = 回到原始金額。「贏／輸」以整局淨損益判斷，走局不加碼。</p>
     </div>
 
-    <div class="stats">
+    <div class="stats" id="playerStats">
       <div><span>總下注</span><b id="totalOut">-</b></div>
       <div><span>每門贏</span><b id="multOut">-</b></div>
       <div><span>全贏派彩</span><b id="payOut">-</b></div>
@@ -77,6 +93,7 @@
     </div>
 
     <button class="main-btn" id="mainBtn" type="button">開牌</button>
+    <button class="sub-btn" id="unbankBtn" type="button" hidden>下莊</button>
     <label class="toggle"><input type="checkbox" id="fastChk"> 快速開牌</label>
     <p class="hint center">快捷鍵：空白鍵 開牌，1 2 3 切換押門</p>
   </aside>
@@ -85,7 +102,7 @@
     <div class="recent" id="recent"></div>
     <div class="table" id="table">
       <div class="seat dealer" id="seat0">
-        <div class="seat-head"><b>莊家</b><span class="seat-tag" id="dealerTag"></span></div>
+        <div class="seat-head"><b id="dealerName">莊家</b><span class="seat-tag" id="dealerTag"></span></div>
         <div class="hand">
           <div class="pair" data-pair="front"><div class="slots"></div><em class="hname"></em></div>
           <div class="pair" data-pair="back"><div class="slots"></div><em class="hname"></em></div>
@@ -95,9 +112,15 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0-1.2a1.5 1.5 0 0 1 3 0V11m0-.8a1.5 1.5 0 0 1 3 0v4.3a6 6 0 0 1-6 6h-.6a6 6 0 0 1-4.9-2.5l-2.4-3.4a1.5 1.5 0 0 1 2.3-1.9L9 15"/></svg>
           <em>輕點開牌</em>
         </div>
+        <div class="bank-box" id="bankBox" hidden>
+          <span class="lk">🔒 莊家資金</span>
+          <b id="bankBal">0.00</b>
+          <small id="bankRoom"></small>
+        </div>
       </div>
 
       <div class="mid">
+        <span class="shoe-tag" id="shoeTag"></span>
         <div class="wall" id="wall" aria-hidden="true"></div>
         <div class="result" id="result" hidden><b id="resultVal"></b><span id="resultSub"></span></div>
       </div>
@@ -111,6 +134,7 @@
     <div class="bet-line" id="betLine"></div>
     <div class="stage-foot">
       <span>局號 <b id="nonceOut">-</b></span>
+      <span class="rtp" id="shoeOut"></span>
       <span class="rtp" id="rtpOut"></span>
       <button class="link" id="fairBtn" type="button">公平性</button>
     </div>
@@ -124,18 +148,25 @@
     </div>
     <div class="tab-body" id="tab-mine">
       <div class="summary" id="summary"></div>
-      <div class="list-head"><span>局號</span><span>押門</span><span>結果</span><span>下注</span><span>派彩</span></div>
+      <div class="list-head"><span>局號</span><span>押門</span><span>結果</span><span>下注</span><span>損益</span></div>
       <div class="list" id="myList"></div>
     </div>
     <div class="tab-body ranks" id="tab-ranks" hidden></div>
     <div class="tab-body rules" id="tab-rules" hidden>
       <ol>
         <li>一莊三門：<b>莊家</b>對<b>初門、川門、尾門</b>。選好每門下注金額，押一門或多門，按「開牌」。</li>
-        <li>32 張骨牌洗好後，每家各拿 4 張，自動配成兩對：<b>前（小對）</b>與<b>後（大對）</b>，後對一定 ≥ 前對。</li>
+        <li>32 張骨牌洗好後，每局每家各拿 4 張，<b>一副牌打兩局</b>（第 1 局用 16 張、第 2 局用剩下 16 張），打完再洗。每家的牌自動配成兩對：<b>前（小對）</b>與<b>後（大對）</b>，後對一定 ≥ 前對。</li>
         <li><b>公比</b>：每門的前對比莊家前對、後對比莊家後對。
           <br>兩對都贏 → <b class="g">贏</b>　兩對都輸 → <b class="r">輸</b>　一勝一負 → <b>走</b>（退回本金）</li>
         <li>兩對一樣大算<b>莊家贏</b>（同點莊吃）；鱉十（0 點）遇鱉十也是莊家贏。</li>
-        <li>贏了派彩 = 下注 × <b id="ruleMult">1.96</b>（含本金，莊家抽水 <span id="ruleComm">4%</span>）。</li>
+        <li><b>壓一賠一</b>：押 10 贏了拿回 20（淨贏 10），不抽水。</li>
+      </ol>
+      <h4>上莊</h4>
+      <ol>
+        <li>切到「上莊」，選場次後按「上莊」。上莊期間由桌上其他玩家押三門，你當莊家：輸的門你吃、贏的門你賠、走的門不動。</li>
+        <li>場次決定每門下注範圍與可上莊的 VIP：<span id="roomRules"></span></li>
+        <li>最大賠付 = 三門都押該場上限而且莊家通賠。錢包要 ≥ 最大賠付才能上莊；上莊期間錢包鎖定（顯示在莊家左側），低於最大賠付會自動下莊。</li>
+        <li>莊家名稱顯示你的 UID（打碼，例如 17XXXXX）。隨時可在兩局之間按「下莊」。</li>
       </ol>
       <h4>兩張牌的大小</h4>
       <p><b>至尊寶</b> ＞ <b>對子</b>（雙天、雙地…雜五對，見「牌型大小」）＞ <b>天王／地王</b>（天、地配 9 點）＞ <b>天槓／地槓</b>（配 8 點）＞ <b>天高九／地高九</b>（配 7 點）＞ <b>點數</b>。</p>
@@ -143,12 +174,13 @@
       至尊的兩張牌（丁三、二四）不成對時，可當 3 點或 6 點，自動取較大的結果。</p>
       <h4>配牌法</h4>
       <p>莊家和三門都用同一套配牌：在三種分法中選<b>前對最大</b>的；前對一樣大時選後對較大的。</p>
-      <h4>數學（RTP <span id="ruleRtp">97.85%</span>）</h4>
+      <h4>數學（RTP <span id="ruleRtp"></span>）</h4>
       <p>窮舉全部 35,960 × 20,475 = 736,281,000 種「莊家 4 張 × 一門 4 張」：單門
       贏 <b id="rulePw"></b>、走 <b id="rulePp"></b>、輸 <b id="rulePl"></b>。<br>
-      期望回報 = 走 + 1.96 × 贏 ≈ <b id="ruleRtp2"></b>。押越多門不會改變每門的期望值。</p>
+      期望回報 = 走 + 2 × 贏 ≈ <b id="ruleRtp2"></b>，莊家優勢 ≈ 輸 − 贏 = <b id="ruleEdge"></b>，全部來自同點莊吃。押越多門不會改變每門的期望值。<br>
+      一副牌打兩局不影響期望值：第 2 局雖然知道剩下哪 16 張，但三門與莊家拿到哪 4 張仍是隨機，而且同點莊吃讓每一門「輸」的機率永遠 ≥「贏」，記牌也翻不了盤。</p>
       <h4>公平性</h4>
-      <p>每局開始前公開 <code>SHA256(伺服器種子)</code>，結束後公開種子。亂數由 <code>SHA256(伺服器種子:客戶種子:局號:游標)</code> 每 8 個 hex 轉成 0~1，用 Fisher–Yates 洗 32 張牌：莊家拿第 1–4 張、初門 5–8、川門 9–12、尾門 13–16。可在「公平性」視窗自行驗證。</p>
+      <p>每副牌開始前公開 <code>SHA256(伺服器種子)</code>，兩局打完才公開種子（第 2 局的牌也由它決定）。亂數由 <code>SHA256(伺服器種子:客戶種子:牌組號:游標)</code> 每 8 個 hex 轉成 0~1，用 Fisher–Yates 洗 32 張牌。第 1 局：莊家拿第 1–4 張、初門 5–8、川門 9–12、尾門 13–16；第 2 局依序拿第 17–32 張。可在「公平性」視窗自行驗證。</p>
     </div>
   </section>
 </main>
@@ -157,26 +189,33 @@
   <form method="dialog" class="modal-card">
     <h3>公平性驗證</h3>
     <div class="field">
-      <label for="clientSeed">客戶種子 <small>（下一局起生效）</small></label>
+      <label for="clientSeed">客戶種子 <small>（下一副牌起生效）</small></label>
       <div class="input-row"><input id="clientSeed" type="text" maxlength="64" autocomplete="off"><button type="button" id="seedRandom">換</button></div>
     </div>
+    <div class="field" id="curHashField">
+      <label>本副牌伺服器種子雜湊 <small>（打完第 2 局公開種子）</small></label>
+      <code class="hash" id="curHash"></code>
+    </div>
     <div class="field">
-      <label>下一局伺服器種子雜湊</label>
+      <label>下一副牌伺服器種子雜湊</label>
       <code class="hash" id="nextHash"></code>
     </div>
     <hr>
-    <h4>驗證任一局</h4>
+    <h4>驗證任一副牌（已打完的）</h4>
     <div class="field"><label for="vServer">伺服器種子</label><div class="input-row"><input id="vServer" type="text" autocomplete="off"></div></div>
     <div class="field"><label for="vClient">客戶種子</label><div class="input-row"><input id="vClient" type="text" autocomplete="off"></div></div>
-    <div class="field"><label for="vNonce">局號</label><div class="input-row"><input id="vNonce" type="number" min="1" step="1"></div></div>
+    <div class="two">
+      <div class="field"><label for="vNonce">牌組號</label><div class="input-row"><input id="vNonce" type="number" min="1" step="1"></div></div>
+      <div class="field"><label for="vRound">第幾局</label><select id="vRound"><option value="0">第 1 局</option><option value="1">第 2 局</option></select></div>
+    </div>
     <div class="verify-out" id="verifyOut"></div>
     <div class="modal-actions"><button class="main-btn" value="close">關閉</button></div>
   </form>
 </dialog>
 
 <script src="js/sha256.js"></script>
-<script src="js/engine.js?v=2"></script>
-<script src="js/sound.js?v=2"></script>
-<script src="js/ui.js?v=2"></script>
+<script src="js/engine.js?v=3"></script>
+<script src="js/sound.js?v=3"></script>
+<script src="js/ui.js?v=3"></script>
 </body>
 </html>

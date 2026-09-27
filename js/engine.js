@@ -115,10 +115,9 @@
 
   // 單門的精確機率：窮舉全部 35,960 × 20,475 = 736,281,000 種「莊家 4 張 × 該門 4 張」（tools/rtp-test.js）
   const PROB = { win: 268894332 / 736281000, push: 193406044 / 736281000, lose: 273980624 / 736281000 };
-  // 贏了抽水 4%：派彩 = 下注 × 1.96（含本金）；走 = 退回本金
-  const COMMISSION = 0.04;
-  const WIN_MULT = 2 - COMMISSION;
-  const RTP = PROB.push + WIN_MULT * PROB.win; // 97.85%
+  // 壓一賠一：兩對全贏派彩 = 下注 × 2（含本金）；走 = 退回本金；莊家優勢只來自同點莊吃
+  const WIN_MULT = 2;
+  const RTP = PROB.push + WIN_MULT * PROB.win; // 99.309%
 
   const DOORS = ['初', '川', '尾'];
   const SEATS = ['莊', '初', '川', '尾'];
@@ -151,14 +150,37 @@
     return deck;
   }
 
-  // 發牌：牌墩順序 莊、初、川、尾 各 4 張，其餘 16 張不用
-  function deal(serverSeed, clientSeed, nonce) {
+  // 一副牌打兩局：第 1 局用牌序第 1–16 張、第 2 局用第 17–32 張，打完再洗
+  const ROUNDS_PER_SHOE = 2;
+  // 發牌：每局 莊、初、川、尾 依序各拿 4 張
+  function deal(serverSeed, clientSeed, nonce, round = 0) {
     const deck = shuffle(serverSeed, clientSeed, nonce);
-    const hands = SEATS.map((_, s) => deck.slice(s * 4, s * 4 + 4));
+    const base = round * 16;
+    const hands = SEATS.map((_, s) => deck.slice(base + s * 4, base + s * 4 + 4));
     const arranged = hands.map(arrange);
     const dealer = arranged[0];
     const doors = DOORS.map((_, d) => compare(arranged[d + 1], dealer));
-    return { deck, hands, arranged, doors };
+    return { deck, round, hands, arranged, doors };
+  }
+
+  // 上莊場次：每門下注範圍、可上莊的 VIP 等級。最大賠付 = 三門都押上限且通賠
+  const ROOMS = [
+    { id: 'S', name: '初級場', min: 1, max: 10, vipMin: 2 },
+    { id: 'M', name: '中級場', min: 10, max: 100, vipMin: 3 },
+    { id: 'L', name: '高級場', min: 100, max: 1000, vipMin: 6 }
+  ];
+  const VIP_MAX = 8;
+  const maxPayout = room => room.max * DOORS.length * (WIN_MULT - 1);
+  // 能不能上某一場：回傳 null = 可以，否則回傳原因
+  function bankBlock(room, vip, balance) {
+    if (!(vip >= room.vipMin && vip <= VIP_MAX)) return `需 V${room.vipMin}–V${VIP_MAX}`;
+    if (balance + 1e-9 < maxPayout(room)) return `錢包需 ≥ ${maxPayout(room).toLocaleString('en-US')}`;
+    return null;
+  }
+
+  // 上莊時桌上其他玩家的押注（模擬）：每門 85% 有人押，金額為場次範圍內的整數
+  function randomTableBets(room, rnd = Math.random) {
+    return DOORS.map(() => (rnd() < 0.85 ? room.min + Math.floor(rnd() * (room.max - room.min + 1)) : 0));
   }
 
   const cents = x => Math.floor(x * 100 + 1e-7) / 100;
@@ -167,35 +189,65 @@
     constructor(opts = {}) {
       this.balance = opts.balance ?? 1000;
       this.clientSeed = opts.clientSeed || randomHex(8);
-      this.nonce = opts.nonce || 0;
+      this.nonce = opts.nonce || 0;        // 第幾副牌（種子用）
+      this.roundNo = opts.roundNo || 0;    // 第幾局（顯示用）
+      this.shoe = opts.shoe || null;       // 目前這副牌 { nonce, serverSeed, clientSeed, used }
       this.nextServerSeed = randomHex(32);
     }
 
     get nextServerHash() { return sha256(this.nextServerSeed); }
+    // 這副牌還沒打完時，下一局沿用它；否則會洗新牌
+    get shoeInProgress() { return !!(this.shoe && this.shoe.used < ROUNDS_PER_SHOE); }
+    get nextShoeRound() { return this.shoeInProgress ? this.shoe.used : 0; }
 
-    // bets：{ 初: 金額, 川: 金額, 尾: 金額 }（沒押的門給 0）。下注並立即結算
+    // 發下一局：需要時開新的一副牌。這副牌打完才公開伺服器種子（第 2 局的牌也由它決定）
+    nextRound() {
+      if (!this.shoeInProgress) {
+        this.nonce += 1;
+        this.shoe = { nonce: this.nonce, serverSeed: this.nextServerSeed, clientSeed: this.clientSeed, used: 0 };
+        this.nextServerSeed = randomHex(32);
+      }
+      const s = this.shoe;
+      const r = deal(s.serverSeed, s.clientSeed, s.nonce, s.used);
+      s.used += 1;
+      this.roundNo += 1;
+      const done = s.used >= ROUNDS_PER_SHOE;
+      return Object.assign(r, {
+        roundNo: this.roundNo, shoe: s.nonce, shoeDone: done,
+        serverHash: sha256(s.serverSeed), serverSeed: done ? s.serverSeed : null, clientSeed: s.clientSeed
+      });
+    }
+
+    // 閒家：bets = { 初: 金額, 川: 金額, 尾: 金額 }（沒押的門給 0）。下注並立即結算
     play(rawBets) {
       const bets = DOORS.map(d => cents(Math.max(0, +(rawBets && rawBets[d]) || 0)));
       const total = cents(bets.reduce((a, b) => a + b, 0));
       if (!(total > 0)) throw new Error('請至少押一門');
       if (total > this.balance + 1e-9) throw new Error('餘額不足');
-      const serverSeed = this.nextServerSeed;
-      this.nextServerSeed = randomHex(32);
-      this.nonce += 1;
-      const r = deal(serverSeed, this.clientSeed, this.nonce);
+      const r = this.nextRound();
       const pays = r.doors.map((d, i) => (!bets[i] ? 0 : d.outcome === 'win' ? cents(bets[i] * WIN_MULT) : d.outcome === 'push' ? bets[i] : 0));
       const payout = cents(pays.reduce((a, b) => a + b, 0));
       this.balance = cents(this.balance - total + payout);
-      return Object.assign(r, {
-        nonce: this.nonce, bets, total, pays, payout,
-        serverSeed, serverHash: sha256(serverSeed), clientSeed: this.clientSeed
-      });
+      return Object.assign(r, { role: 'player', bets, total, pays, payout, net: cents(payout - total) });
+    }
+
+    // 上莊：tableBets = 三門上其他玩家的押注。莊家吃輸的門、賠贏的門，走的門不動
+    bank(room, vip, rawBets) {
+      const why = bankBlock(room, vip, this.balance);
+      if (why) throw new Error('不能上莊：' + why);
+      const bets = DOORS.map((d, i) => cents(Math.min(room.max, Math.max(0, +(rawBets && rawBets[i]) || 0))));
+      const total = cents(bets.reduce((a, b) => a + b, 0));
+      const r = this.nextRound();
+      const nets = r.doors.map((d, i) => (d.outcome === 'lose' ? bets[i] : d.outcome === 'win' ? -cents(bets[i] * (WIN_MULT - 1)) : 0));
+      const net = cents(nets.reduce((a, b) => a + b, 0));
+      this.balance = cents(this.balance + net);
+      return Object.assign(r, { role: 'bank', room: room.id, bets, total, nets, net, payout: 0 });
     }
   }
 
   global.PaiGow = {
-    TILES, KINDS, PAIR_ORDER, PAIR_NAME, SPECIALS, DOORS, SEATS, SPLITS, WIN_MULT, COMMISSION, PROB, RTP,
-    evalPair, pairScore, points, arrange, compare, shuffle, deal, floats, randomHex, cents, PaiGowGame
+    TILES, KINDS, PAIR_ORDER, PAIR_NAME, SPECIALS, DOORS, SEATS, SPLITS, WIN_MULT, PROB, RTP, ROUNDS_PER_SHOE, ROOMS, VIP_MAX,
+    evalPair, pairScore, points, arrange, compare, shuffle, deal, floats, randomHex, cents, maxPayout, bankBlock, randomTableBets, PaiGowGame
   };
   if (typeof module !== 'undefined') module.exports = global.PaiGow;
 })(typeof window !== 'undefined' ? window : globalThis);
