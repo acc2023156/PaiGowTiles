@@ -71,7 +71,7 @@
   function evalPair(a, b) {
     const A = TILES[a], B = TILES[b];
     if (A.group === B.group) {
-      if (A.group === '至尊') return { score: S_SUPREME, name: '至尊寶', kind: 'supreme' };
+      if (A.group === '至尊') return { score: S_SUPREME, name: '至尊寶（皇帝）', kind: 'supreme' };
       const i = PAIR_ORDER.indexOf(A.group);
       return { score: S_PAIR + 15 - i, name: PAIR_NAME[A.group], kind: 'pair' };
     }

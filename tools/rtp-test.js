@@ -18,7 +18,7 @@ const idx = name => P.TILES.filter(t => t.name === name).map(t => t.id);
 const ev = (a, b) => P.evalPair(a, b);
 const [t1, t2] = idx('天'), [d1, d2] = idx('地'), [r1] = idx('人');
 const z12 = id('至尊', '1,2'), z24 = id('至尊', '2,4');
-check(ev(z12, z24).name === '至尊寶', '至尊寶');
+check(ev(z12, z24).name === '至尊寶（皇帝）', '至尊寶（皇帝）');
 check(ev(t1, t2).name === '雙天' && ev(t1, t2).score < ev(z12, z24).score, '雙天 < 至尊寶');
 check(ev(id('雜五', '1,4'), id('雜五', '2,3')).name === '雜五對', '雜五對（武子不同點也算對）');
 check(ev(t1, id('雜九', '4,5')).name === '天王', '天王');

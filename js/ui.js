@@ -407,7 +407,7 @@
     const rows = [];
     let no = 0;
     const row = (ids, name, note) => rows.push(`<div class="rk"><span class="no">${++no}</span><span>${minis(ids, 1)}</span><span><b>${name}</b>${note ? ` <small>${note}</small>` : ''}</span></div>`);
-    row(byGroup('至尊'), '至尊寶', '丁三＋二四，最大');
+    row(byGroup('至尊'), '至尊寶（皇帝）', '丁三＋二四，最大');
     P.PAIR_ORDER.forEach(g => {
       const ids = byGroup(g);
       row(ids.slice(0, 2), P.PAIR_NAME[g], P.TILES[ids[0]].civil ? '文子對' : '武子對');
@@ -425,7 +425,7 @@
       singles.push(`<span>${P.TILES.filter(x => x.group === t.group).map(x => mini(x.id)).join('')}${t.name}</span>`);
     });
     el.ranks.innerHTML =
-      `<h4>特殊牌型（由大到小）</h4>${rows.join('')}` +
+      `<h4>牌型（由大到小）</h4>${rows.join('')}` +
       `<h4>一般點數</h4><p>兩張相加取個位數：<b>9 點</b>最大 → 0 點（<b>鱉十</b>）最小。同點數比兩張中較大的一張；再一樣或都是鱉十 → 莊家贏。至尊不成對時可當 3 或 6 點。</p>` +
       `<h4>單張大小（比同點用，由大到小）</h4><div class="singles">${singles.join('')}</div>`;
   }

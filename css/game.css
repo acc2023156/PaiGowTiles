@@ -102,10 +102,18 @@
 .door.lose.bet { box-shadow: inset 0 0 0 2px rgba(237, 65, 99, .8); }
 
 /* 牌墩：桌子中央一排面朝下的牌，發一張少一張 */
-.wall { position: relative; z-index: 1; display: flex; gap: 2px; height: calc(var(--tw) * .95); align-items: center; }
+/* 每一墩 = 兩張面朝下的牌疊在一起：上層牌面 + 象牙色邊，下面露出第二張的牌背與邊 */
+.wall { position: relative; z-index: 1; display: flex; gap: 3px; height: calc(var(--tw) * 1.1); align-items: flex-start; padding-top: 2px; }
 .wall i {
-  width: calc(var(--tw) * .4); height: calc(var(--tw) * .76); border-radius: 3px;
-  background: linear-gradient(160deg, #4a2a1a, #24120a); box-shadow: inset 0 0 0 1px #7a4a28, 0 2px 0 #d8c9a1, 0 3px 4px rgba(0, 0, 0, .5);
+  --e: max(2px, calc(var(--tw) * .07));
+  width: calc(var(--tw) * .44); height: calc(var(--tw) * .72); border-radius: 3px;
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, .06) 0 2px, transparent 2px 5px), linear-gradient(160deg, #5a341f, #24120a);
+  box-shadow:
+    inset 0 0 0 1px #7a4a28,
+    0 var(--e) 0 #d8c9a1,
+    0 calc(var(--e) * 2) 0 #3a1f10,
+    0 calc(var(--e) * 3) 0 #b9a577,
+    0 calc(var(--e) * 3 + 3px) 5px rgba(0, 0, 0, .55);
   transition: opacity .2s, transform .2s;
 }
 .wall i.gone { opacity: 0; transform: translateY(-6px); }
