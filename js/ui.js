@@ -757,6 +757,23 @@
     save();
   });
 
+  // ---------- 跑馬燈（同 Plinko）：兩份相同文字捲半寬無縫循環，每圈以「黑粒仔」開頭並重新洗吉祥話 ----------
+  (function startMarquee() {
+    const track = $('#marquee');
+    const brand = '黑粒仔';
+    const cheers = ['兩對全贏', '天對上門', '至尊皇帝', '莊家通賠', '好運連連', '大吉大利', '財源滾滾', '手氣長紅', '旗開得勝', '天地人和'];
+    const sep = '　✦　';
+    const build = () => {
+      const c = cheers.slice().sort(() => Math.random() - 0.5);
+      const text = [brand, c[0], c[1], brand, c[2], c[3]].join(sep) + sep;
+      track.innerHTML = '';
+      for (let i = 0; i < 2; i++) track.appendChild(document.createElement('span')).textContent = text;
+      track.style.animationDuration = text.length * 0.32 + 's';
+    };
+    track.addEventListener('animationiteration', build);
+    build();
+  })();
+
   // ---------- 初始化 ----------
   const rtpTxt = pct(P.RTP);
   el.rtp.textContent = `RTP ${rtpTxt}`;

@@ -203,6 +203,24 @@
 .verify-out .vs { display: grid; grid-template-columns: 44px 1fr; gap: 6px 8px; align-items: center; margin-top: 8px; }
 .verify-out .vs b { color: var(--strong); }
 
+/* 跑馬燈：頂部列下方置中，寬 26 個字（尺寸、位置同 Plinko 珠珠寶貝） */
+.marquee-bar { max-width: 1280px; margin: 0 auto; padding: 10px 12px 0; font-size: 13px; font-weight: 900; line-height: 1.8; }
+.marquee {
+  display: block; width: 26em; max-width: 100%; margin: 0 auto; overflow: hidden; padding: 1px 0; border-radius: 999px;
+  background: linear-gradient(180deg, #5a0d12, #260506);
+  box-shadow: inset 0 0 0 1px rgba(255, 198, 65, .55), 0 2px 6px rgba(75, 37, 27, .2);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+.marquee-track { display: inline-flex; white-space: nowrap; animation: marquee 20s linear infinite; }
+.marquee-track span {
+  background: linear-gradient(180deg, #fff0aa, #ffc641 55%, #d89b42);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@media (min-width: 900px) { .marquee-bar { padding: 16px 20px 0; font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation-duration: 60s !important; } }
+
 /* ---------- 上莊 ---------- */
 .seg button { padding: 8px 4px; }
 .rooms { display: grid; gap: 6px; }
@@ -281,6 +299,9 @@
   .bank-box { right: calc(100% + 4px); min-width: 0; padding: 5px 6px; }
   .bank-box b { font-size: 12px; }
   .tap-hint { left: calc(100% + 4px); }
+  .wall { gap: 2px; }
+  .wall i { width: calc(var(--tw) * .4); }
+  .shoe-tag { right: calc(100% + 4px); font-size: 10px; padding: 1px 6px; }
   .table { --tw: 27px; padding: 10px 6px 16px; }
   .doors { gap: 5px; }
   .seat { padding: 5px 4px 10px; }
