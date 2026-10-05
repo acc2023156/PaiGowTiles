@@ -65,8 +65,11 @@
   const urlVip = +new URLSearchParams(location.search).get('vip');
   let vip = urlVip >= 1 && urlVip <= P.VIP_MAX ? Math.floor(urlVip) : (+saved.vip >= 1 ? +saved.vip : 1);
   let roomId = P.ROOMS.some(r => r.id === saved.roomId) ? saved.roomId : P.ROOMS[0].id;
+  // 上莊功能開關：關閉時隱藏「上莊」按鈕與說明，也不還原先前的上莊狀態
+  const BANK_ENABLED = false;
+  if (!BANK_ENABLED) document.querySelectorAll('[data-bank]').forEach(n => n.remove());
   // 上莊中：{ room, rounds, net }（重新整理頁面仍維持）
-  let banking = saved.banking && P.ROOMS.some(r => r.id === saved.banking.room) ? saved.banking : null;
+  let banking = BANK_ENABLED && saved.banking && P.ROOMS.some(r => r.id === saved.banking.room) ? saved.banking : null;
 
   let mode = banking ? 'bank' : 'manual';
   let dealing = false;
@@ -785,7 +788,7 @@
   $('#rulePw').textContent = pct(P.PROB.win, 3);
   $('#rulePp').textContent = pct(P.PROB.push, 3);
   $('#rulePl').textContent = pct(P.PROB.lose, 3);
-  $('#roomRules').innerHTML = P.ROOMS.map(r => `${r.name} 每門 ${fmtInt(r.min)}–${fmtInt(r.max)}（最大賠付 ${fmtInt(P.maxPayout(r))}，V${r.vipMin}–V${P.VIP_MAX}）`).join('；');
+  if (BANK_ENABLED) $('#roomRules').innerHTML = P.ROOMS.map(r => `${r.name} 每門 ${fmtInt(r.min)}–${fmtInt(r.max)}（最大賠付 ${fmtInt(P.maxPayout(r))}，V${r.vipMin}–V${P.VIP_MAX}）`).join('；');
   renderRanks();
   setWall(game.shoeInProgress ? game.shoe.used : game.shoe ? P.ROUNDS_PER_SHOE : 0);
   const last = history[0];

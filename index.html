@@ -26,7 +26,7 @@
     <div class="seg" id="modeSeg">
       <button type="button" class="on" data-mode="manual">手動</button>
       <button type="button" data-mode="auto">自動</button>
-      <button type="button" data-mode="bank">上莊</button>
+      <button type="button" data-mode="bank" data-bank>上莊</button>
     </div>
 
     <div id="playerFields">
@@ -163,8 +163,8 @@
         <li>兩對一樣大算<b>莊家贏</b>（同點莊吃）；鱉十（0 點）遇鱉十也是莊家贏。</li>
         <li><b>壓一賠一</b>：押 10 贏了拿回 20（淨贏 10），不抽水。</li>
       </ol>
-      <h4>上莊</h4>
-      <ol>
+      <h4 data-bank>上莊</h4>
+      <ol data-bank>
         <li>切到「上莊」，選場次後按「上莊」。上莊期間由桌上其他玩家押三門，你當莊家：輸的門你吃、贏的門你賠、走的門不動。</li>
         <li>場次決定每門下注範圍與可上莊的 VIP：<span id="roomRules"></span></li>
         <li>最大賠付 = 三門都押該場上限而且莊家通賠。錢包要 ≥ 最大賠付才能上莊；上莊期間錢包鎖定（顯示在莊家左側），低於最大賠付會自動下莊。</li>
