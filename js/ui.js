@@ -9,7 +9,9 @@
   const pct = (x, d = 2) => (x * 100).toFixed(d) + '%';
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
-  const KEY = 'paigow.v2';
+  // 從大廳進入時（remote）用會員的 GDBO 錢包，紀錄與本機試玩分開存
+  const remote = P.remote;
+  const KEY = remote ? 'paigow.gd.v1' : 'paigow.v2';
   const START_BALANCE = 1000;
   const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const OUT_TXT = { win: '贏', push: '走', lose: '輸' };
@@ -47,13 +49,15 @@
   // ---------- 存檔 ----------
   let saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { saved = {}; }
-  if (saved.balance === undefined) { // 舊版（v1）只沿用餘額與客戶種子
+  if (!remote && saved.balance === undefined) { // 舊版（v1）只沿用餘額與客戶種子
     try { const old = JSON.parse(localStorage.getItem('paigow.v1')) || {}; saved.balance = old.balance; saved.clientSeed = old.clientSeed; } catch (e) { /* ignore */ }
   }
-  const game = new P.PaiGowGame({
-    balance: saved.balance ?? START_BALANCE, clientSeed: saved.clientSeed, nonce: saved.nonce, roundNo: saved.roundNo, shoe: saved.shoe
-  });
-  if (saved.nextServerSeed) game.nextServerSeed = saved.nextServerSeed;
+  const game = remote
+    ? new remote.RemotePaiGowGame({ clientSeed: saved.clientSeed, nonce: saved.nonce, roundNo: saved.roundNo })
+    : new P.PaiGowGame({
+      balance: saved.balance ?? START_BALANCE, clientSeed: saved.clientSeed, nonce: saved.nonce, roundNo: saved.roundNo, shoe: saved.shoe
+    });
+  if (saved.nextServerSeed && !remote) game.nextServerSeed = saved.nextServerSeed;
   const history = Array.isArray(saved.history) ? saved.history : [];
   const picked = new Set(Array.isArray(saved.doors) ? saved.doors.filter(d => P.DOORS.includes(d)) : ['初']);
   if (saved.bet) el.bet.value = saved.bet;
@@ -66,7 +70,8 @@
   let vip = urlVip >= 1 && urlVip <= P.VIP_MAX ? Math.floor(urlVip) : (+saved.vip >= 1 ? +saved.vip : 1);
   let roomId = P.ROOMS.some(r => r.id === saved.roomId) ? saved.roomId : P.ROOMS[0].id;
   // 上莊中：{ room, rounds, net }（重新整理頁面仍維持）
-  let banking = saved.banking && P.ROOMS.some(r => r.id === saved.banking.room) ? saved.banking : null;
+  // 上莊目前只開放本機試玩
+  let banking = !remote && saved.banking && P.ROOMS.some(r => r.id === saved.banking.room) ? saved.banking : null;
 
   let mode = banking ? 'bank' : 'manual';
   let dealing = false;
@@ -490,7 +495,7 @@
   }
 
   function refillIfBroke() {
-    if (game.balance < 0.1 && !banking) {
+    if (!remote && game.balance < 0.1 && !banking) {
       game.balance = START_BALANCE;
       say(`遊戲幣用完了，已補回 ${START_BALANCE}`, true);
     }
@@ -522,24 +527,24 @@
   }
 
   async function doRound(fast) {
-    if (dealing) return null;
+    if (dealing || (mode === 'bank' && !banking)) return null;
     let r;
+    dealing = true;
+    renderControls();
     try {
       if (mode === 'bank') {
-        if (!banking) return null;
         const room = roomOf(banking.room);
         r = game.bank(room, vip, P.randomTableBets(room));
       } else {
         const amount = readBet();
         const bets = {};
         P.DOORS.forEach(d => { bets[d] = picked.has(d) ? amount : 0; });
-        r = game.play(bets);
+        r = await game.play(bets);
       }
-    } catch (e) { say(e.message); return null; }
+    } catch (e) { dealing = false; renderControls(); say(e.message); return null; }
     record(r);
     if (r.role === 'bank') { banking.rounds += 1; banking.net = P.cents(banking.net + r.net); }
     save();
-    dealing = true;
     shownBets = r.bets;
     shownRole = r.role;
     shownBalance = P.cents(game.balance - (r.role === 'bank' ? r.net : r.payout));
@@ -712,7 +717,7 @@
   function renderVerify() {
     const s = el.vServer.value.trim(), c = el.vClient.value.trim();
     const nonce = Math.floor(+el.vNonce.value), round = +el.vRound.value;
-    if (!s || !c || !(nonce >= 1)) {
+    if (!s || !c || !(nonce >= 0)) {
       el.verifyOut.innerHTML = '<span class="r">請填入完整資料（進行中的這副牌要打完第 2 局才有種子）</span>';
       return;
     }
@@ -733,7 +738,7 @@
     el.clientSeed.value = game.clientSeed;
     el.nextHash.textContent = game.nextServerHash;
     el.curHashField.hidden = !game.shoeInProgress;
-    if (game.shoeInProgress) el.curHash.textContent = window.sha256(game.shoe.serverSeed);
+    if (game.shoeInProgress) el.curHash.textContent = game.shoe.serverHash || window.sha256(game.shoe.serverSeed);
     const last = history.find(h => h.serverSeed);
     el.vServer.value = last ? last.serverSeed : '';
     el.vClient.value = last ? last.clientSeed : '';
@@ -752,7 +757,7 @@
   });
   $('#seedRandom').addEventListener('click', () => {
     game.clientSeed = P.randomHex(8);
-    game.nextServerSeed = P.randomHex(32);
+    if (!remote) game.nextServerSeed = P.randomHex(32);
     el.clientSeed.value = game.clientSeed;
     el.nextHash.textContent = game.nextServerHash;
     save();
@@ -795,8 +800,16 @@
     shownBets = last.bets;
     shownRole = last.role;
   }
+  if (remote) el.modeSeg.querySelector('[data-mode=bank]').hidden = true;
   save();
   renderHistory();
   renderControls();
   window.addEventListener('beforeunload', save);
+  if (remote) {
+    dealing = true;
+    renderControls();
+    game.connect()
+      .then(() => { dealing = false; setWall(game.shoeInProgress ? game.shoe.used : 0); renderControls(); })
+      .catch(e => { renderControls(); say(`無法連接遊戲伺服器：${e.message}`); });
+  }
 })();

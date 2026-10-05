@@ -207,7 +207,7 @@
     <div class="field"><label for="vServer">伺服器種子</label><div class="input-row"><input id="vServer" type="text" autocomplete="off"></div></div>
     <div class="field"><label for="vClient">客戶種子</label><div class="input-row"><input id="vClient" type="text" autocomplete="off"></div></div>
     <div class="two">
-      <div class="field"><label for="vNonce">牌組號</label><div class="input-row"><input id="vNonce" type="number" min="1" step="1"></div></div>
+      <div class="field"><label for="vNonce">牌組號</label><div class="input-row"><input id="vNonce" type="number" min="0" step="1"></div></div>
       <div class="field"><label for="vRound">第幾局</label><select id="vRound"><option value="0">第 1 局</option><option value="1">第 2 局</option></select></div>
     </div>
     <div class="verify-out" id="verifyOut"></div>
@@ -217,7 +217,8 @@
 
 <script src="js/sha256.js"></script>
 <script src="js/engine.js?v=6"></script>
+<script src="js/remote.js?v=1"></script>
 <script src="js/sound.js?v=6"></script>
-<script src="js/ui.js?v=7"></script>
+<script src="js/ui.js?v=8"></script>
 </body>
 </html>
