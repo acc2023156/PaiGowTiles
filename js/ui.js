@@ -531,6 +531,30 @@
     let r;
     dealing = true;
     renderControls();
+    fast = fast || reduceMotion;
+    const T = ms => wait(fast ? ms * 0.35 : ms);
+    // 新的一副牌：補滿牌墩再洗；第 2 局直接從剩下的牌墩發
+    const prepareWall = async round => {
+      if (round === 0) {
+        setWall(0);
+        Sound.shuffle();
+        if (!fast) {
+          el.wall.classList.remove('shuffle');
+          void el.wall.offsetWidth;
+          el.wall.classList.add('shuffle');
+        }
+        el.shoeTag.textContent = '洗牌中';
+        await T(450);
+        el.wall.classList.remove('shuffle');
+      } else {
+        setWall(1);
+        await T(150);
+      }
+    };
+    // 按下就清桌、洗牌，與伺服器開牌同時進行
+    const nextRound = game.nextShoeRound;
+    clearTable();
+    const prepared = prepareWall(nextRound);
     try {
       if (mode === 'bank') {
         const room = roomOf(banking.room);
@@ -541,32 +565,15 @@
         P.DOORS.forEach(d => { bets[d] = picked.has(d) ? amount : 0; });
         r = await game.play(bets);
       }
-    } catch (e) { dealing = false; renderControls(); say(e.message); return null; }
+    } catch (e) { await prepared; dealing = false; renderControls(); say(e.message); return null; }
+    await prepared;
+    if (r.round !== nextRound) await prepareWall(r.round);
     record(r);
     if (r.role === 'bank') { banking.rounds += 1; banking.net = P.cents(banking.net + r.net); }
     save();
     shownBets = r.bets;
     shownRole = r.role;
     shownBalance = P.cents(game.balance - (r.role === 'bank' ? r.net : r.payout));
-    clearTable();
-    fast = fast || reduceMotion;
-    const T = ms => wait(fast ? ms * 0.35 : ms);
-    // 新的一副牌：補滿牌墩再洗；第 2 局直接從剩下的牌墩發
-    if (r.round === 0) {
-      setWall(0);
-      Sound.shuffle();
-      if (!fast) {
-        el.wall.classList.remove('shuffle');
-        void el.wall.offsetWidth;
-        el.wall.classList.add('shuffle');
-      }
-      el.shoeTag.textContent = '洗牌中';
-      await T(450);
-      el.wall.classList.remove('shuffle');
-    } else {
-      setWall(1);
-      await T(150);
-    }
     el.shoeTag.textContent = `第 ${r.round + 1} 局`;
     renderControls();
     // 發牌：莊、初、川、尾
