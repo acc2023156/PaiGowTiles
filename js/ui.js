@@ -3,7 +3,8 @@
   'use strict';
   const P = window.PaiGow;
   const $ = s => document.querySelector(s);
-  const fmt = x => (+x).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // 金額顯示兩位小數、無條件捨去（與大廳、GDBO 一致）
+  const fmt = x => (Math.trunc(Math.round(+x * 1000) / 10) / 100 || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const signed = x => (x > 0 ? '+' : x < 0 ? '-' : '') + fmt(Math.abs(x));
   const pct = (x, d = 2) => (x * 100).toFixed(d) + '%';
   const wait = ms => new Promise(r => setTimeout(r, ms));
